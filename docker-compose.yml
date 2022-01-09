@@ -1,9 +1,32 @@
 version: '2.4'
 
 services:
+  reverse-proxy:
+    # The official v2 Traefik docker image
+    image: traefik:v2.5
+    # Enables the web UI and tells Traefik to listen to docker
+    command:
+      #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      #- "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      - "--certificatesresolvers.myresolver.acme.email=webmaster@schulzke.space"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - "./letsencrypt:/letsencrypt"
+      # So that Traefik can listen to the Docker events
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    depends_on:
+      - frontend
 
   frontend:
-    image: "grocy/frontend:${GROCY_IMAGE_TAG}"
+    image: "grocy/frontend:v3.1.3-1"
     build:
       args:
         GROCY_VERSION: v3.1.3
@@ -12,9 +35,11 @@ services:
       dockerfile: Dockerfile-grocy-frontend
     depends_on:
       - backend
-    ports:
-      - '127.0.0.1:80:8080'
-      - '127.0.0.1:443:8443'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grocy.rule=Host(`schulzke.space`)"
+      - "traefik.http.routers.grocy.entrypoints=websecure"
+      - "traefik.http.routers.grocy.tls.certresolver=myresolver"
     read_only: true
     tmpfs:
       - /tmp
@@ -22,7 +47,7 @@ services:
       - /var/log/nginx
 
   backend:
-    image: "grocy/backend:${GROCY_IMAGE_TAG}"
+    image: "grocy/backend:v3.1.3-1"
     build:
       args:
         GROCY_VERSION: v3.1.3
@@ -31,8 +56,6 @@ services:
         COMPOSER_CHECKSUM: "be95557cc36eeb82da0f4340a469bad56b57f742d2891892dcb2f8b0179790ec"
       context: .
       dockerfile: Dockerfile-grocy-backend
-    expose:
-      - '9000'
     read_only: true
     tmpfs:
       - /tmp
