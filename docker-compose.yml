@@ -11,6 +11,10 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       #- "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
       - "--certificatesresolvers.myresolver.acme.email=webmaster@schulzke.space"
@@ -37,7 +41,7 @@ services:
       - backend
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.grocy.rule=Host(`schulzke.space`)"
+      - "traefik.http.routers.grocy.rule=Host(`grocy.schulzke.space`)"
       - "traefik.http.routers.grocy.entrypoints=websecure"
       - "traefik.http.routers.grocy.tls.certresolver=myresolver"
     read_only: true
